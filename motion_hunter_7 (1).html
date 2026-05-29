@@ -1,0 +1,1129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Motion Hunter — Observatory</title>
+<script src="https://unpkg.com/jspsych@7.3.4"></script>
+<script src="https://unpkg.com/@jspsych/plugin-html-keyboard-response@1.1.3"></script>
+<script src="https://unpkg.com/@jspsych/plugin-call-function@1.1.3"></script>
+<link rel="stylesheet" href="https://unpkg.com/jspsych@7.3.4/css/jspsych.css">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=IBM+Plex+Mono:wght@300;400;500&display=swap');
+
+  :root {
+    --bg-deep: #0a0820;
+    --bg-panel: #13102a;
+    --bg-header: #0e0b1e;
+    --purple-dim: #38306a;
+    --purple-mid: #7C3AED;
+    --purple-bright: #8B5CF6;
+    --purple-glow: #A78BFA;
+    --amber: #FF7035;
+    --green: #34d399;
+    --red: #ef4444;
+    --pink: #E91E8C;
+    --text-dim: #7060a8;
+    --text-mid: #9070c0;
+    --text-bright: #e0d8f0;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg-deep);
+    color: var(--text-bright);
+    font-family: 'IBM Plex Mono', monospace;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  #jspsych-target {
+    background: var(--bg-deep);
+    min-height: 100vh;
+  }
+
+  .jspsych-display-element {
+    background: var(--bg-deep) !important;
+    font-family: 'IBM Plex Mono', monospace !important;
+    color: var(--text-bright) !important;
+  }
+
+  .jspsych-content {
+    max-width: 800px !important;
+    margin: 0 auto;
+  }
+
+  /* ===== OBSERVATORY LAYOUT ===== */
+  .obs-container {
+    width: 700px;
+    max-width: 95vw;
+    margin: 0 auto;
+    position: relative;
+  }
+
+  .obs-header {
+    background: var(--bg-header);
+    border-radius: 8px 8px 0 0;
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--purple-dim);
+  }
+
+  .obs-block-trial {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 11px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+  }
+
+  .obs-score-label {
+    font-size: 11px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+  }
+
+  .obs-score-value {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--amber);
+    margin-left: 8px;
+  }
+
+  .obs-arena {
+    background: var(--bg-panel);
+    height: 420px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+    border-radius: 0 0 8px 8px;
+    overflow: hidden;
+  }
+
+  .obs-stage-center {
+    flex: 1 1 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+  }
+
+  .obs-stage-footer {
+    flex: 0 0 80px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 6px;
+    padding-bottom: 10px;
+  }
+
+  /* ===== CUE PHASE ===== */
+  .cue-display {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+  }
+
+  .cue-arrow-wrap {
+    position: relative;
+    width: 160px; height: 160px;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  .cue-ring-outer { position: absolute; width: 160px; height: 160px; border-radius: 50%; border: 1px solid rgba(139, 92, 246, 0.08); }
+  .cue-ring-mid { position: absolute; width: 120px; height: 120px; border-radius: 50%; border: 1px solid rgba(139, 92, 246, 0.12); }
+  .cue-ring-inner { position: absolute; width: 80px; height: 80px; border-radius: 50%; background: rgba(124, 58, 237, 0.06); }
+
+  .cue-arrow {
+    position: relative; z-index: 2; font-size: 52px; font-weight: 700; color: var(--purple-glow);
+    text-shadow: 0 0 30px rgba(167, 139, 250, 0.6); font-family: 'Orbitron', sans-serif;
+    line-height: 1; display: flex; align-items: center; justify-content: center;
+  }
+
+  .cue-crosshair { position: absolute; background: rgba(167, 139, 250, 0.3); }
+  .cue-crosshair.h { width: 160px; height: 1px; top: 50%; left: 0; }
+  .cue-crosshair.v { width: 1px; height: 160px; left: 50%; top: 0; }
+
+  .cue-status-text {
+    font-family: 'Orbitron', sans-serif; font-size: 14px; letter-spacing: 2px; text-transform: uppercase; color: var(--purple-glow);
+  }
+
+  .fixation-cross { font-family: 'Orbitron', sans-serif; font-size: 36px; color: var(--purple-dim); line-height: 1; }
+
+  #rdk-canvas { border: 1px solid var(--purple-dim); border-radius: 50%; display: block; }
+
+  /* ===== SIGNAL-DECISION PHASE ===== */
+  .decision-prompt {
+    font-family: 'Orbitron', sans-serif; font-size: 13px; color: var(--text-mid);
+    text-transform: uppercase; letter-spacing: 2px; text-align: center;
+  }
+  .decision-keys-hint {
+    font-size: 12px; color: var(--purple-glow); letter-spacing: 1px;
+  }
+
+  /* ===== CONFIDENCE SLIDER ===== */
+  .confidence-wrap { width: 100%; max-width: 500px; animation: fadeInUp 0.3s ease; }
+  .confidence-label {
+    font-family: 'Orbitron', sans-serif; font-size: 12px; color: var(--text-mid);
+    text-transform: uppercase; letter-spacing: 2px; text-align: center; margin-bottom: 16px;
+  }
+
+  .slider-container { position: relative; padding: 0 10px; }
+  .confidence-bar-visual {
+    width: 100%; height: 12px; border-radius: 6px;
+    background: linear-gradient(90deg, #231c44, var(--purple-bright));
+    margin-bottom: 10px;
+  }
+
+  .slider-tick-labels { display: flex; justify-content: space-between; margin-top: 10px; }
+  .slider-tick-labels span { font-family: 'Orbitron', sans-serif; font-size: 11px; color: var(--text-dim); width: 40px; text-align: center; }
+  .slider-anchors { display: flex; justify-content: space-between; font-size: 10px; color: var(--text-bright); text-transform: uppercase; letter-spacing: 1px; }
+
+  .conf-instr {
+    text-align: center; font-family: 'Orbitron', sans-serif;
+    font-size: 13px; color: var(--purple-glow); letter-spacing: 1px;
+  }
+
+  /* ===== FEEDBACK ===== */
+  .feedback-icon { width: 72px; height: 72px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 32px; }
+  .feedback-icon.correct { background: rgba(52, 211, 153, 0.12); border: 2px solid var(--green); color: var(--green); }
+  .feedback-icon.incorrect { background: rgba(239, 68, 68, 0.12); border: 2px solid var(--red); color: var(--red); }
+  .feedback-truth { font-family: 'Orbitron', sans-serif; font-size: 14px; text-transform: uppercase; }
+  .feedback-score { font-family: 'Orbitron', sans-serif; font-size: 28px; font-weight: 700; }
+  .feedback-score.positive { color: var(--green); }
+  .feedback-score.negative { color: var(--red); }
+
+  /* ===== WELCOME / BLOCKS ===== */
+  .welcome-container { text-align: center; max-width: 650px; margin: 0 auto; padding: 40px 20px; }
+  .welcome-title { font-family: 'Orbitron', sans-serif; font-size: 36px; font-weight: 900; background: linear-gradient(135deg, var(--purple-glow), var(--pink)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 8px; }
+  .welcome-subtitle { font-family: 'Orbitron', sans-serif; font-size: 13px; color: var(--text-dim); letter-spacing: 4px; text-transform: uppercase; margin-bottom: 32px; }
+  .welcome-text { font-size: 14px; line-height: 1.8; color: var(--text-mid); margin-bottom: 24px; }
+  .welcome-text strong { color: var(--purple-glow); }
+  .key-box { display: inline-block; padding: 2px 8px; background: var(--purple-dim); border-radius: 4px; color: white; font-family: 'Orbitron'; font-size: 12px; }
+
+  .space-prompt {
+    margin-top: 40px; font-family: 'Orbitron', sans-serif; font-size: 12px;
+    color: var(--pink); letter-spacing: 2px; animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+  @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+  .block-intro { text-align: center; padding: 40px 20px; }
+  .block-intro h2 { font-family: 'Orbitron', sans-serif; color: var(--purple-glow); margin-bottom: 12px; }
+
+  .pid-input {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 18px;
+    padding: 10px 16px;
+    background: var(--bg-header);
+    border: 2px solid var(--purple-dim);
+    border-radius: 6px;
+    color: var(--text-bright);
+    text-align: center;
+    outline: none;
+    width: 300px;
+    letter-spacing: 2px;
+    transition: border-color 0.2s;
+  }
+  .pid-input:focus {
+    border-color: var(--purple-bright);
+    box-shadow: 0 0 12px rgba(139, 92, 246, 0.3);
+  }
+  .pid-input::placeholder {
+    color: var(--text-dim);
+    letter-spacing: 1px;
+    font-size: 14px;
+  }
+  .pid-error {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 11px;
+    color: var(--red);
+    letter-spacing: 1px;
+    min-height: 18px;
+    margin-top: 8px;
+  }
+  .pid-btn {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 13px;
+    padding: 10px 32px;
+    background: var(--purple-mid);
+    border: none;
+    border-radius: 6px;
+    color: white;
+    cursor: pointer;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-top: 16px;
+    transition: background 0.2s, opacity 0.2s;
+  }
+  .pid-btn:hover { background: var(--purple-bright); }
+  .pid-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+</style>
+</head>
+<body>
+<div id="jspsych-target"></div>
+
+<script>
+// ======================================================================
+//  MODE DETECTION: ?mode=test for test mode
+// ======================================================================
+const URL_PARAMS = new URLSearchParams(window.location.search);
+const TEST_MODE = URL_PARAMS.get('mode') === 'test';
+const CALIBRATE_MODE = URL_PARAMS.get('mode') === 'calibrate';
+const VERSION = 'v7.0';
+console.log(`Motion Hunter ${VERSION} | mode=${URL_PARAMS.get('mode')} | TEST=${TEST_MODE} | CALIBRATE=${CALIBRATE_MODE}`);
+
+// ======================================================================
+//  CONFIG
+// ======================================================================
+let PARTICIPANT_ID = null;  // Set by participant input page
+
+const RDK_APERTURE_PX     = 200;
+const RDK_DOT_SIZE        = 3;
+const RDK_DOT_COUNT       = 100;
+const RDK_SPEED_PX        = 3;
+const RDK_N_SETS          = 3;
+const RDK_BG_COLOR        = '#000000';
+const RDK_DOT_COLOR       = '#ffffff';
+
+const SNR_LEVELS = [
+  { label: 'Threshold', multiplier: 1.00, weight: 1.00 }
+];
+
+const TARGET_DIRS = ['left', 'right'];
+
+// Single SNR level at exactly participant's calibrated threshold
+// 120 cued trials + 24 neutral trials = 144 trials per block
+// Test mode: 12 cued + 4 neutral = 16 trials/block
+const TRIALS_PER_BLOCK = TEST_MODE ? 12 : 120;
+const NEUTRAL_PER_BLOCK = TEST_MODE ? 4 : 24;
+
+const FIXATION_DURATION    = 500;
+const CUE_DURATION         = 1500;
+const SIGNAL_TIMEOUT       = 1500;
+const FEEDBACK_DURATION    = 800;
+
+// Calibration: full = 75 trials / 15 reversals, test/calibrate = 12/75 trials (calibrate uses full length)
+const STAIRCASE_MAX_TRIALS    = TEST_MODE ? 12 : 50;
+const STAIRCASE_MAX_REVERSALS = TEST_MODE ? 99 : 12;
+const STAIRCASE_START         = 0.15;
+const STAIRCASE_MIN           = 0.01;
+const STAIRCASE_MAX           = 0.60;
+
+
+const state = {
+  score: 0,
+  trialNum: 0,
+  decisionResponse: null,
+  decisionRT: null,
+  confidenceRaw: null,
+  confidenceRT: null,
+  timedOut: false,
+  calibratedThreshold: null,
+  actualCoherence: null,
+  data: []
+};
+
+// ======================================================================
+//  RDK RENDERER
+// ======================================================================
+let rdkAnimationId = null;
+let rdkStopped = false;
+
+function startRDK(canvas, coherence, direction) {
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const radius = RDK_APERTURE_PX / 2;
+  const dirSign = (direction === 'right') ? 1 : -1;
+  rdkStopped = false;
+
+  const dotSets = [];
+  const dotsPerSet = Math.floor(RDK_DOT_COUNT / RDK_N_SETS);
+  for (let s = 0; s < RDK_N_SETS; s++) {
+    const dots = [];
+    for (let d = 0; d < dotsPerSet; d++) {
+      let x, y; do { x = (Math.random()-0.5)*200; y = (Math.random()-0.5)*200; } while(x*x+y*y > radius*radius);
+      dots.push({x, y});
+    }
+    dotSets.push(dots);
+  }
+
+  let frameCount = 0;
+  function draw() {
+    if (rdkStopped) return;
+    ctx.clearRect(0,0,W,H);
+    ctx.beginPath(); ctx.arc(W/2, H/2, radius, 0, Math.PI*2); ctx.fillStyle = RDK_BG_COLOR; ctx.fill();
+    const dots = dotSets[frameCount % RDK_N_SETS];
+    for (let i=0; i<dots.length; i++) {
+      if (Math.random() < coherence) dots[i].x += dirSign * RDK_SPEED_PX * RDK_N_SETS;
+      else {
+        let nx, ny; do { nx = (Math.random()-0.5)*200; ny = (Math.random()-0.5)*200; } while(nx*nx+ny*ny > radius*radius);
+        dots[i].x = nx; dots[i].y = ny;
+      }
+      if (dots[i].x*dots[i].x + dots[i].y*dots[i].y > radius*radius) {
+         let nx, ny; do { nx = (Math.random()-0.5)*200; ny = (Math.random()-0.5)*200; } while(nx*nx+ny*ny > radius*radius);
+         dots[i].x = nx; dots[i].y = ny;
+      }
+    }
+    ctx.fillStyle = RDK_DOT_COLOR;
+    for (const d of dots) ctx.fillRect(W/2+d.x-1, H/2+d.y-1, RDK_DOT_SIZE, RDK_DOT_SIZE);
+    frameCount++; rdkAnimationId = requestAnimationFrame(draw);
+  }
+  rdkAnimationId = requestAnimationFrame(draw);
+}
+
+function stopRDK() { rdkStopped = true; cancelAnimationFrame(rdkAnimationId); }
+
+// ======================================================================
+//  UTILITIES
+// ======================================================================
+function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+
+function computeScore(correct, confidence, timedOut) {
+  if (timedOut) return -10;
+  // Confidence key 1-5 maps to score magnitude 2,4,6,8,10
+  const confKey = confidence != null ? Math.round(confidence / 25) + 1 : 3; // 0→1, 25→2, 50→3, 75→4, 100→5
+  const magnitude = confKey * 2;
+  return correct ? magnitude : -magnitude;
+}
+
+function saveData() {
+  if (state.data.length === 0) return;
+  const headers = ['participant_id','block_id','trial_number','trial_in_block','block_validity','block_validity_pct','cue_direction','true_direction','cue_valid','is_neutral','trial_type','snr_label','snr_coherence','calibrated_threshold','rt_deadline_ms','rt_deadline_source','calibration_timeout_rate','response','timed_out','accuracy','RT_decision_ms','confidence_raw','RT_confidence_ms','score_delta','score_cumulative','phase_type','timestamp'];
+  const csv = [headers.join(','), ...state.data.map(d => headers.map(h => {
+    const v = d[h];
+    if (v === null || v === undefined || v === '') return '';
+    return JSON.stringify(v);
+  }).join(','))].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `motion_hunter_${PARTICIPANT_ID}.csv`;
+  a.click();
+}
+
+// ======================================================================
+//  TRIAL GENERATION — Weighted SNR Distribution
+//  Single SNR at threshold, with neutral trials added
+//  Uses floor + remainder pattern to guarantee exact trial counts
+// ======================================================================
+function generateTrials(blockId, numCuedTrials, blockValidity, numNeutral) {
+  let pool = [];
+  const snr = SNR_LEVELS[0]; // single level
+
+  // Valid/invalid split
+  const validTrials   = Math.round(numCuedTrials * blockValidity);
+  const invalidTrials = numCuedTrials - validTrials;
+
+  // Per-direction: floor for left, remainder for right (exact split)
+  const validLeft    = Math.floor(validTrials / 2);
+  const validRight   = validTrials - validLeft;
+  const invalidLeft  = Math.floor(invalidTrials / 2);
+  const invalidRight = invalidTrials - invalidLeft;
+
+  for (let v = 0; v < validLeft;    v++) pool.push({ snr, direction: 'left',  cueValid: true,  isNeutral: false });
+  for (let v = 0; v < validRight;   v++) pool.push({ snr, direction: 'right', cueValid: true,  isNeutral: false });
+  for (let v = 0; v < invalidLeft;  v++) pool.push({ snr, direction: 'left',  cueValid: false, isNeutral: false });
+  for (let v = 0; v < invalidRight; v++) pool.push({ snr, direction: 'right', cueValid: false, isNeutral: false });
+
+  // Add neutral trials: half left, half right
+  const neutralLeft  = Math.floor(numNeutral / 2);
+  const neutralRight = numNeutral - neutralLeft;
+  for (let n = 0; n < neutralLeft;  n++) pool.push({ snr, direction: 'left',  cueValid: null, isNeutral: true });
+  for (let n = 0; n < neutralRight; n++) pool.push({ snr, direction: 'right', cueValid: null, isNeutral: true });
+
+  pool = shuffle(pool);
+
+  return pool.map((p, i) => {
+    let cueDir;
+    if (p.isNeutral) {
+      cueDir = 'neutral';
+    } else {
+      cueDir = p.cueValid ? p.direction : (p.direction === 'left' ? 'right' : 'left');
+    }
+
+    return {
+      blockId,
+      trialInBlock: i + 1,
+      blockValidity,
+      cueDirection: cueDir,
+      trueDirection: p.direction,
+      cueValid: p.isNeutral ? null : p.cueValid,
+      isNeutral: p.isNeutral,
+      snrLabel: p.snr.label,
+      snrMultiplier: p.snr.multiplier,
+      trialType: p.isNeutral ? 'neutral' : (cueDir === p.direction ? 'congruent' : 'conflict')
+    };
+  });
+}
+
+// Block 1: 80% reliable (120 cued + 24 neutral = 144 trials)
+const block1Trials = generateTrials(1, TRIALS_PER_BLOCK, 0.80, NEUTRAL_PER_BLOCK);
+// Block 2: 50% ambiguous (120 cued + 24 neutral = 144 trials)
+const block2Trials = generateTrials(2, TRIALS_PER_BLOCK, 0.50, NEUTRAL_PER_BLOCK);
+
+const allBlocks = [block1Trials, block2Trials];
+
+// ======================================================================
+//  MAIN TRIAL SEQUENCE
+// ======================================================================
+
+function buildTrialSequence(trialDef) {
+  const seq = [];
+
+  const hdr = () => `<div class="obs-header">
+    <div class="obs-block-trial">Block ${trialDef.blockId} · Trial ${trialDef.trialInBlock}</div>
+    <div class="obs-score-label">Score <span class="obs-score-value">${state.score}</span></div>
+  </div>`;
+
+  seq.push({
+    type: jsPsychCallFunction,
+    func: () => {
+      state.trialNum++;
+      state.decisionResponse = null;
+      state.decisionRT = null;
+      state.confidenceRaw = null;
+      state.confidenceRT = null;
+      state.timedOut = false;
+      state.actualCoherence = null;
+    }
+  });
+
+  // Fixation
+  seq.push({
+    type: jsPsychHtmlKeyboardResponse,
+    stimulus: () => `
+      <div class="obs-container">
+        ${hdr()}
+        <div class="obs-arena">
+          <div class="obs-stage-center"><div class="fixation-cross">+</div></div>
+          <div class="obs-stage-footer"></div>
+        </div>
+      </div>`,
+    choices: "NO_KEYS", trial_duration: FIXATION_DURATION
+  });
+
+  // Cue Phase
+  seq.push({
+    type: jsPsychHtmlKeyboardResponse,
+    stimulus: () => `
+      <div class="obs-container">
+        ${hdr()}
+        <div class="obs-arena">
+          <div class="obs-stage-center">
+            <div class="cue-display">
+              <div class="cue-arrow-wrap">
+                <div class="cue-crosshair h"></div><div class="cue-crosshair v"></div>
+                <div class="cue-ring-outer"></div><div class="cue-ring-mid"></div><div class="cue-ring-inner"></div>
+                <div class="cue-arrow" style="transform: ${trialDef.cueDirection === 'neutral' ? 'translateY(-7px) translateX(+1px)' : 'translateY(-5px) translateX(+1px)'};">
+                  ${trialDef.cueDirection === 'neutral' ? '■' : (trialDef.cueDirection === 'left' ? '←' : '→')}
+                  </div>
+              </div>
+            </div>
+          </div>
+          <div class="obs-stage-footer"></div>
+        </div>
+      </div>`,
+    choices: "NO_KEYS", trial_duration: CUE_DURATION
+  });
+
+  // Brief Post-Cue Fixation
+  seq.push({
+    type: jsPsychHtmlKeyboardResponse,
+    stimulus: () => `
+      <div class="obs-container">
+        ${hdr()}
+        <div class="obs-arena">
+          <div class="obs-stage-center"><div class="fixation-cross">+</div></div>
+          <div class="obs-stage-footer"></div>
+        </div>
+      </div>`,
+    choices: "NO_KEYS", trial_duration: 200
+  });
+
+  // Decision Phase
+  seq.push({
+    type: jsPsychHtmlKeyboardResponse,
+    stimulus: () => `
+      <div class="obs-container">
+        ${hdr()}
+        <div class="obs-arena">
+          <div class="obs-stage-center">
+            <div style="transform: translateY(+30px); display: flex; flex-direction: column; align-items: center;">
+            <canvas id="rdk-canvas" width="200" height="200"></canvas>
+            <div class="decision-prompt" style="margin-top:16px">Which direction?</div>
+            <div class="decision-keys-hint">[1] LEFT &nbsp;&nbsp;&nbsp; [2] RIGHT</div>
+          </div>
+          <div class="obs-stage-footer"></div>
+        </div>
+      </div>`,
+    choices: ['1', '2'],
+    trial_duration: SIGNAL_TIMEOUT,
+    on_load: () => {
+      state.actualCoherence = Math.min(0.90, Math.max(0.01, trialDef.snrMultiplier * state.calibratedThreshold));
+      const canvas = document.getElementById('rdk-canvas');
+      startRDK(canvas, state.actualCoherence, trialDef.trueDirection);
+    },
+    on_finish: (data) => {
+      stopRDK();
+      if (data.response == null) {
+        state.timedOut = true;
+      } else {
+        state.decisionResponse = data.response === '1' ? 'left' : 'right';
+        state.decisionRT = data.rt;
+      }
+    }
+  });
+
+  // Confidence Phase - wrapped in conditional timeline so it skips on timeout
+  seq.push({
+    timeline: [{
+      type: jsPsychHtmlKeyboardResponse,
+      stimulus: () => `
+        <div class="obs-container">
+          ${hdr()}
+          <div class="obs-arena">
+            <div class="obs-stage-center">
+              <div class="confidence-wrap">
+                <div class="confidence-label">Rate your confidence</div>
+                <div class="slider-container">
+                  <div class="confidence-bar-visual"></div>
+                  <div class="slider-anchors"><span>Very Unconfident</span><span>Very Confident</span></div>
+                  <div class="slider-tick-labels"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div>
+                </div>
+                <div class="conf-instr" style="margin-top:20px">Press <span class="key-box">1</span> to <span class="key-box">5</span> on your keyboard</div>
+              </div>
+            </div>
+            <div class="obs-stage-footer"></div>
+          </div>
+        </div>`,
+      choices: ['1', '2', '3', '4', '5'],
+      trial_duration: null,
+      on_finish: (data) => {
+        const mapping = { '1': 0, '2': 25, '3': 50, '4': 75, '5': 100 };
+        state.confidenceRaw = mapping[data.response];
+        state.confidenceRT = data.rt;
+      }
+    }],
+    conditional_function: () => !state.timedOut
+  });
+
+  // Feedback Phase
+  seq.push({
+    type: jsPsychHtmlKeyboardResponse,
+    stimulus: () => {
+      const correct = (!state.timedOut && state.decisionResponse === trialDef.trueDirection);
+      const scoreDelta = computeScore(correct, state.confidenceRaw, state.timedOut);
+      state.score += scoreDelta;
+
+      state.data.push({
+        participant_id: PARTICIPANT_ID,
+        block_id: trialDef.blockId,
+        trial_number: state.trialNum,
+        trial_in_block: trialDef.trialInBlock,
+        block_validity: trialDef.blockValidity,
+        block_validity_pct: Math.round(trialDef.blockValidity * 100),
+        cue_direction: trialDef.cueDirection,
+        true_direction: trialDef.trueDirection,
+        cue_valid: trialDef.cueValid === null ? '' : (trialDef.cueValid ? 1 : 0),
+        is_neutral: trialDef.isNeutral ? 1 : 0,
+        trial_type: trialDef.trialType,
+        snr_label: trialDef.snrLabel,
+        snr_coherence: state.actualCoherence,
+        calibrated_threshold: state.calibratedThreshold,
+        rt_deadline_ms: SIGNAL_TIMEOUT,
+        response: state.decisionResponse,
+        timed_out: state.timedOut ? 1 : 0,
+        accuracy: correct ? 1 : 0,
+        RT_decision_ms: state.decisionRT,
+        confidence_raw: state.confidenceRaw,
+        RT_confidence_ms: state.confidenceRT,
+        score_delta: scoreDelta,
+        score_cumulative: state.score,
+        phase_type: 'main',
+        timestamp: new Date().toISOString()
+      });
+
+      const icon = correct ? '✓' : '✗';
+      return `
+        <div class="obs-container">
+          <div class="obs-header">
+            <div class="obs-block-trial">Block ${trialDef.blockId} · Trial ${trialDef.trialInBlock}</div>
+            <div class="obs-score-label">Score <span class="obs-score-value">${state.score}</span></div>
+          </div>
+          <div class="obs-arena">
+            <div class="obs-stage-center">
+              <div style="transform: translateY(+35px); display: flex; flex-direction: column; align-items: center;">
+              <div class="feedback-icon ${correct ? 'correct' : 'incorrect'}">${icon}</div>
+              <div class="feedback-truth" style="margin-top:16px">${state.timedOut ? 'TIMEOUT - TOO SLOW' : (correct ? 'CORRECT' : 'INCORRECT')}</div>
+              <div class="feedback-score ${scoreDelta >= 0 ? 'positive' : 'negative'}">${scoreDelta >= 0 ? '+' : ''}${scoreDelta}</div>
+            </div>
+            <div class="obs-stage-footer"></div>
+          </div>
+        </div>`;
+    },
+    choices: "NO_KEYS", trial_duration: FEEDBACK_DURATION
+  });
+
+  return seq;
+}
+
+// ======================================================================
+//  STAIRCASE / CALIBRATION (Matches Main Phase Styling)
+// ======================================================================
+const staircase = {
+  trialIdx: 0, coherence: STAIRCASE_START, reversals: 0, lastDir: null, finished: false,
+  lastCorrect: false, lastTimedOut: false, correctCount: 0, consecutiveCorrect: 0,
+  lastCoherence: null, lastResponse: null, lastRT: null, lastTrueDir: null,
+  reversalCoherences: []  // coherence at each reversal point
+};
+
+function buildStaircaseTrial() {
+  const seq = [];
+
+  const calHdr = () => `<div class="obs-header">
+    <div class="obs-block-trial">Calibration · Trial ${staircase.trialIdx + 1}</div>
+  </div>`;
+
+  // 1. Fixation
+  seq.push({
+    type: jsPsychHtmlKeyboardResponse,
+    stimulus: () => `
+      <div class="obs-container">
+        ${calHdr()}
+        <div class="obs-arena">
+          <div class="obs-stage-center"><div class="fixation-cross">+</div></div>
+          <div class="obs-stage-footer"></div>
+        </div>
+      </div>`,
+    choices: "NO_KEYS", trial_duration: FIXATION_DURATION
+  });
+
+  // 2. Decision Phase
+  seq.push({
+    type: jsPsychHtmlKeyboardResponse,
+    stimulus: () => `
+      <div class="obs-container">
+        ${calHdr()}
+        <div class="obs-arena">
+          <div class="obs-stage-center">
+            <div style="transform: translateY(+30px); display: flex; flex-direction: column; align-items: center;">
+            <canvas id="rdk-canvas" width="200" height="200"></canvas>
+            <div class="decision-prompt" style="margin-top:16px">Calibration: Which direction?</div>
+            <div class="decision-keys-hint">[1] LEFT &nbsp;&nbsp;&nbsp; [2] RIGHT</div>
+          </div>
+          <div class="obs-stage-footer"></div>
+        </div>
+      </div>`,
+    choices: ['1', '2'], trial_duration: SIGNAL_TIMEOUT,
+    on_load: () => {
+      window._dir = Math.random() < 0.5 ? 'left' : 'right';
+      startRDK(document.getElementById('rdk-canvas'), staircase.coherence, window._dir);
+    },
+    on_finish: (data) => {
+      stopRDK();
+      const resp = data.response ? (data.response === '1' ? 'left' : 'right') : null;
+      const correct = data.response && resp === window._dir;
+      staircase.lastCorrect = !!correct;
+      staircase.lastTimedOut = !data.response;
+      staircase.lastCoherence = staircase.coherence;
+      staircase.lastResponse = resp;
+      staircase.lastRT = data.rt;
+      staircase.lastTrueDir = window._dir;
+      if (correct) staircase.correctCount++;
+
+      // 3-down 1-up staircase logic (converges at ~79.4% correct)
+      // Two-phase step sizes (Saberi & Green, 1996):
+      // Coarse: first 4 reversals at ±0.05/0.08 (find the zone)
+      // Fine: remaining reversals at ±0.02/0.03 (pin down threshold)
+      const stepDown = staircase.reversals < 4 ? 0.05 : 0.02;
+      const stepUp   = staircase.reversals < 4 ? 0.08 : 0.03;
+
+      if (correct) {
+        staircase.consecutiveCorrect++;
+        if (staircase.consecutiveCorrect >= 3) {
+          if (staircase.lastDir === 'up') {
+            staircase.reversals++;
+            staircase.reversalCoherences.push(staircase.coherence);
+          }
+          staircase.lastDir = 'down';
+          staircase.coherence = Math.max(STAIRCASE_MIN, staircase.coherence - stepDown);
+          staircase.consecutiveCorrect = 0;
+        }
+      } else {
+        staircase.consecutiveCorrect = 0;
+        if (staircase.lastDir === 'down') {
+          staircase.reversals++;
+          staircase.reversalCoherences.push(staircase.coherence);
+        }
+        staircase.lastDir = 'up';
+        staircase.coherence = Math.min(STAIRCASE_MAX, staircase.coherence + stepUp);
+      }
+      staircase.trialIdx++;
+      if (staircase.trialIdx >= STAIRCASE_MAX_TRIALS || staircase.reversals >= STAIRCASE_MAX_REVERSALS) staircase.finished = true;
+    }
+  });
+
+  // 3. Feedback Phase (No score, just status)
+  seq.push({
+    type: jsPsychHtmlKeyboardResponse,
+    stimulus: () => {
+      state.data.push({
+        participant_id: PARTICIPANT_ID,
+        block_id: 0,
+        trial_number: staircase.trialIdx,
+        trial_in_block: staircase.trialIdx,
+        block_validity: '',
+        block_validity_pct: '',
+        cue_direction: '',
+        true_direction: staircase.lastTrueDir,
+        cue_valid: '',
+        trial_type: 'calibration',
+        snr_label: '',
+        snr_coherence: staircase.lastCoherence,
+        calibrated_threshold: staircase.coherence,
+        rt_deadline_ms: '',
+        response: staircase.lastResponse,
+        timed_out: staircase.lastTimedOut ? 1 : 0,
+        accuracy: staircase.lastCorrect ? 1 : 0,
+        RT_decision_ms: staircase.lastRT,
+        confidence_raw: '',
+        RT_confidence_ms: '',
+        score_delta: 0,
+        score_cumulative: state.score,
+        phase_type: 'calibration',
+        timestamp: new Date().toISOString()
+      });
+
+      const icon = staircase.lastCorrect ? '✓' : '✗';
+      const accPct = staircase.trialIdx > 0 ? (staircase.correctCount / staircase.trialIdx * 100).toFixed(0) : 0;
+      const showDebug = TEST_MODE || CALIBRATE_MODE;
+      const phaseLabel = staircase.reversals < 4 ? 'COARSE' : 'FINE';
+      const testInfo = showDebug ? `<div style="margin-top:12px; font-family:'Orbitron',sans-serif; font-size:11px; color:var(--text-dim); letter-spacing:1px;">ACC ${accPct}% · COH ${(staircase.lastCoherence * 100).toFixed(0)}% · REV ${staircase.reversals} · ${phaseLabel} · RT ${staircase.lastRT != null ? Math.round(staircase.lastRT) + 'ms' : 'N/A'}</div>` : '';
+      return `
+        <div class="obs-container">
+          <div class="obs-header">
+            <div class="obs-block-trial">Calibration · Trial ${staircase.trialIdx}</div>
+          </div>
+          <div class="obs-arena">
+            <div class="obs-stage-center">
+              <div style="transform: translateY(+40px); display: flex; flex-direction: column; align-items: center;">
+              <div class="feedback-icon ${staircase.lastCorrect ? 'correct' : 'incorrect'}">${icon}</div>
+              <div class="feedback-truth" style="margin-top:16px">${staircase.lastTimedOut ? 'TIMEOUT' : (staircase.lastCorrect ? 'CORRECT' : 'INCORRECT')}</div>
+              ${testInfo}
+            </div>
+            <div class="obs-stage-footer"></div>
+          </div>
+        </div>`;
+    },
+    choices: "NO_KEYS", trial_duration: FEEDBACK_DURATION
+  });
+
+  // 4. Brief Post-Feedback Fixation
+  seq.push({
+    type: jsPsychHtmlKeyboardResponse,
+    stimulus: () => `
+      <div class="obs-container">
+        <div class="obs-header">
+          <div class="obs-block-trial">Calibration · Trial ${staircase.trialIdx}</div>
+        </div>
+        <div class="obs-arena">
+          <div class="obs-stage-center"><div class="fixation-cross">+</div></div>
+          <div class="obs-stage-footer"></div>
+        </div>
+      </div>`,
+    choices: "NO_KEYS", trial_duration: 400
+  });
+
+  return seq;
+}
+
+// ======================================================================
+//  JSPSYCH INIT
+// ======================================================================
+let dataSaved = false;  // prevent duplicate auto-downloads
+
+const jsPsych = initJsPsych({
+  display_element: 'jspsych-target',
+  on_finish: () => {
+    if (!dataSaved) {
+      dataSaved = true;
+      saveData();
+    }
+  }
+});
+
+const timeline = [];
+
+// Mode label for instructions
+const modeLabel = TEST_MODE ? ' [TEST MODE]' : CALIBRATE_MODE ? ' [CALIBRATION ONLY]' : '';
+const trialCountLabel = TEST_MODE ? '16' : '144';
+
+// Instructions
+// Instructions Page 1
+timeline.push({
+  type: jsPsychHtmlKeyboardResponse,
+  stimulus: `
+    <div class="welcome-container">
+      <div class="welcome-title">MOTION HUNTER</div>
+      <div class="welcome-subtitle">Instructions — Page 1 of 2${modeLabel} ${VERSION}</div>
+      <div class="welcome-text">
+        <!-- PAGE 1 -->
+        <strong>-- Please read the instructions carefully --</strong><br><br>
+        Watch the moving dots. Most dots move randomly, but a few move together toward the <strong>left</strong> or the <strong>right</strong>.<br>
+        Before the dots appear, a <strong>cue</strong> will flash. An <strong>arrow cue</strong> hints about which way the dots are <strong>likely</strong> to move.<br> A <strong>square cue<strong> is a neutral, uninformative cue.
+        <strong>Sometimes the arrow is helpful, sometimes it is not.</strong><br>
+        Identify the direction of the coordinated movement as quickly and as accurately as possible.<br>
+        If you are too slow, your answer will automatically be marked as incorrect.<br><br>
+
+        In the main experimental blocks, you will also be asked to rate your confidence in identifying the direction of the dots.<br>
+        <strong>Rate carefully. You will achieve a higher score by answering correctly with high confidence; however, answering incorrectly with high confidence will result in a lower score.</strong><br>
+        Play the game and get the highest possible score!
+      </div>
+      <div class="space-prompt">PRESS SPACE FOR NEXT PAGE</div>
+    </div>`,
+  choices: [' ']
+});
+
+// Instructions Page 2
+timeline.push({
+  type: jsPsychHtmlKeyboardResponse,
+  stimulus: `
+    <div class="welcome-container">
+      <div class="welcome-title">MOTION HUNTER</div>
+      <div class="welcome-subtitle">Instructions — Page 2 of 2${modeLabel}</div>
+      <div class="welcome-text">
+        <!-- PAGE 2 -->
+        1. <strong>Decisions:</strong> Press <span class="key-box">1</span> for LEFT or <span class="key-box">2</span> for RIGHT.<br>
+        2. <strong>Confidence:</strong> Press <span class="key-box">1</span> (Very Unconfident) to <span class="key-box">5</span> (Very Confident).<br>
+        3. <strong>Navigation:</strong> Press <span class="key-box">SPACE</span> to continue through menus.<br><br>
+        Before the game officially starts, you will first complete a short calibration phase. You do not have to rate your confidence in this phase.<br> 
+      </div>
+      <div class="space-prompt">PRESS SPACE FOR NEXT PAGE</div>
+    </div>`,
+  choices: [' ']
+});
+
+// Participant ID Input Page
+timeline.push({
+  type: jsPsychHtmlKeyboardResponse,
+  stimulus: `
+    <div class="welcome-container">
+      <div class="welcome-title">MOTION HUNTER</div>
+      <div class="welcome-subtitle">Participant Identification${modeLabel}</div>
+      <div class="welcome-text">
+        Please enter the <strong>participant ID</strong> provided in your Qualtrics survey.<br>
+      </div>
+      <div>
+        <input type="text" id="pid-input" class="pid-input" placeholder="Enter your ID" autocomplete="off" spellcheck="false">
+        <div id="pid-error" class="pid-error"></div>
+        <button id="pid-btn" class="pid-btn" disabled>Begin Calibration</button>
+      </div>
+    </div>`,
+  choices: "NO_KEYS",
+  trial_duration: null,
+  on_load: () => {
+    const input = document.getElementById('pid-input');
+    const btn = document.getElementById('pid-btn');
+    const err = document.getElementById('pid-error');
+    input.focus();
+    input.addEventListener('input', () => {
+      btn.disabled = input.value.trim().length === 0;
+      err.textContent = '';
+    });
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && input.value.trim().length > 0) btn.click();
+    });
+    btn.addEventListener('click', () => {
+      const val = input.value.trim();
+      if (val.length === 0) { err.textContent = 'Please enter your participant ID.'; return; }
+      PARTICIPANT_ID = val;
+      jsPsych.finishTrial();
+    });
+  }
+});
+
+const staircaseLoop = {
+  timeline: buildStaircaseTrial(),
+  loop_function: () => !staircase.finished
+};
+timeline.push(staircaseLoop);
+
+// Store calibrated threshold
+timeline.push({
+  type: jsPsychCallFunction,
+  func: () => {
+    // Average all fine-phase reversal points (skip first 4 coarse reversals)
+    // Uses all fine-phase data points for robustness against individual outlier reversals
+    const rc = staircase.reversalCoherences;
+    if (rc.length > 4) {
+      const fineRevs = rc.slice(4);  // all reversals after coarse phase
+      state.calibratedThreshold = fineRevs.reduce((a, b) => a + b, 0) / fineRevs.length;
+    } else if (rc.length >= 4) {
+      const last4 = rc.slice(-4);
+      state.calibratedThreshold = last4.reduce((a, b) => a + b, 0) / last4.length;
+    } else if (rc.length > 0) {
+      state.calibratedThreshold = rc.reduce((a, b) => a + b, 0) / rc.length;
+    } else {
+      state.calibratedThreshold = staircase.coherence;
+    }
+
+    // Record calibration summary row
+    state.data.push({
+      participant_id: PARTICIPANT_ID,
+      block_id: 0,
+      trial_number: 0,
+      trial_in_block: 0,
+      block_validity: '',
+      block_validity_pct: '',
+      cue_direction: '',
+      true_direction: '',
+      cue_valid: '',
+      trial_type: 'calibration_summary',
+      snr_label: '',
+      snr_coherence: '',
+      calibrated_threshold: state.calibratedThreshold,
+      rt_deadline_ms: SIGNAL_TIMEOUT,
+      rt_deadline_source: 'fixed',
+      calibration_timeout_rate: staircase.trialIdx > 0 ? Math.round((staircase.trialIdx - staircase.correctCount) / staircase.trialIdx * 100) / 100 : '',
+      response: '',
+      timed_out: '',
+      accuracy: staircase.trialIdx > 0 ? (staircase.correctCount / staircase.trialIdx) : '',
+      RT_decision_ms: '',
+      confidence_raw: '',
+      RT_confidence_ms: '',
+      score_delta: 0,
+      score_cumulative: state.score,
+      phase_type: 'calibration_summary',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Blocks — always run after calibration
+const mainPhaseTimeline = [];
+
+// Post-calibration info screen
+mainPhaseTimeline.push({
+  type: jsPsychHtmlKeyboardResponse,
+  stimulus: () => {
+    const acc = staircase.trialIdx > 0 ? (staircase.correctCount / staircase.trialIdx * 100).toFixed(1) : 0;
+    const thresh = state.calibratedThreshold != null ? (state.calibratedThreshold * 100).toFixed(1) : 'N/A';
+    const revCount = staircase.reversalCoherences.length;
+    
+    if (CALIBRATE_MODE) {
+      const rc = staircase.reversalCoherences;
+      const coarseRevs = rc.slice(0, 4).map(x => (x*100).toFixed(0) + '%').join(', ');
+      const fineRevs = rc.slice(4).map(x => (x*100).toFixed(0) + '%').join(', ');
+      const fineCount = rc.length > 4 ? rc.length - 4 : 0;
+      return `
+        <div class="welcome-container">
+          <div class="welcome-title">CALIBRATION COMPLETE</div>
+          <div class="welcome-text">
+            Accuracy: <strong>${acc}%</strong><br>
+            Calibrated Threshold: <strong>${thresh}%</strong> coherence<br>
+            Total Reversals: <strong>${revCount}</strong> (${Math.min(4, revCount)} coarse + ${fineCount} fine)<br><br>
+            Coarse reversals: ${coarseRevs || 'N/A'}<br>
+            Fine reversals: ${fineRevs || 'N/A'}<br>
+            Threshold = average of fine reversals<br><br>
+            Calibration data will be downloaded automatically.
+          </div>
+          <div class="space-prompt">PRESS SPACE TO DOWNLOAD CALIBRATION DATA</div>
+        </div>`;
+    }
+    
+    return `
+      <div class="welcome-container">
+        <div class="welcome-title">CALIBRATION COMPLETE</div>
+        <div class="welcome-text">
+          Accuracy: <strong>${acc}%</strong><br>
+          Calibrated Threshold: <strong>${thresh}%</strong> coherence<br><br>
+          You have <strong>1.5 seconds</strong> to respond on each trial.<br>
+          Respond as quickly and as accurately as possible once the dots appear.
+        </div>
+        <div class="space-prompt">PRESS SPACE TO BEGIN MAIN EXPERIMENT</div>
+      </div>`;
+  },
+  choices: [' '],
+  on_finish: () => {
+    if (CALIBRATE_MODE) {
+      // Save calibration-only CSV
+      if (!dataSaved) { dataSaved = true; saveData(); }
+    }
+  }
+});
+
+// In calibration mode, add end screen after calibration info; skip main blocks
+if (CALIBRATE_MODE) {
+  mainPhaseTimeline.push({
+    type: jsPsychHtmlKeyboardResponse,
+    stimulus: `
+      <div class="welcome-container">
+        <div class="welcome-title">CALIBRATION DATA SAVED</div>
+        <div class="welcome-text">
+          The calibration CSV has been downloaded.<br>
+          You may close this window or press SPACE to download again.
+        </div>
+        <div class="space-prompt">PRESS SPACE TO DOWNLOAD AGAIN</div>
+      </div>`,
+    choices: [' '],
+    on_load: () => {
+      if (!dataSaved) { dataSaved = true; saveData(); }
+    },
+    on_finish: () => {
+      dataSaved = false;
+      saveData();
+      dataSaved = true;
+    }
+  });
+} else {
+  // Normal mode: add all experiment blocks
+  allBlocks.forEach((bl, i) => {
+    mainPhaseTimeline.push({
+      type: jsPsychHtmlKeyboardResponse,
+      stimulus: `<div class="block-intro"><h2>BLOCK ${i+1}</h2><p>${bl.length} trials. Focus on the arrow cue.</p><div class="space-prompt">PRESS SPACE TO START</div></div>`,
+      choices: [' ']
+    });
+    bl.forEach(t => {
+      buildTrialSequence(t).forEach(s => mainPhaseTimeline.push(s));
+    });
+  });
+
+  // Final Screen — auto-downloads on load, stays up so participant can re-download with space
+  mainPhaseTimeline.push({
+    type: jsPsychHtmlKeyboardResponse,
+    stimulus: `
+      <div class="welcome-container">
+        <div class="welcome-title">MISSION COMPLETE</div>
+        <div class="welcome-text">Your data has been saved and downloaded automatically.</div>
+        <div class="space-prompt">PRESS SPACE TO DOWNLOAD DATA AGAIN</div>
+      </div>`,
+    choices: [' '],
+    on_load: () => {
+      if (!dataSaved) { dataSaved = true; saveData(); }
+    },
+    on_finish: () => {
+      // Reset flag so space press triggers a fresh download
+      dataSaved = false;
+      saveData();
+      dataSaved = true;
+    }
+  });
+}
+
+mainPhaseTimeline.forEach(t => timeline.push(t));
+
+jsPsych.run(timeline);
+</script>
+</body>
+</html>
